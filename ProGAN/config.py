@@ -18,14 +18,14 @@ class EasyDict(dict):
 #----------------------------------------------------------------------------
 # Paths.
 
-data_dir = '/media/tianyu.han/mri-scratch/DeepLearning/dataset/'
-result_dir = '/media/tianyu.han/mri-scratch/DeepLearning/CheXpert_Dataset/GAN_CheXpert/'
+data_dir = '/content/drive/MyDrive/ryver.ai/06_Technology/CGAN/NIH/'
+result_dir = '/content/drive/MyDrive/ryver.ai/06_Technology/CGAN/NIH/GAN_NIH/'
 
 #----------------------------------------------------------------------------
 # TensorFlow options.
 
 tf_config = EasyDict()  # TensorFlow session config, set by tfutil.init_tf().
-env = EasyDict()        # Environment variables, set by the main program in train.py.
+env = EasyDict()        # Environment variables, set by thgit remote -ve main program in train.py.
 
 tf_config['graph_options.place_pruned_graph']   = True      # False (default) = Check that all ops are available on the designated device. True = Skip the check for ops that are not used.
 #tf_config['gpu_options.allow_growth']          = False     # False (default) = Allocate all GPU memory at the beginning. True = Allocate only as much GPU memory as needed.
@@ -50,8 +50,8 @@ sched       = EasyDict()                                    # Options for train.
 grid        = EasyDict(size='1080p', layout='random')       # Options for train.setup_snapshot_image_grid().
 
 # Dataset (choose one).
-desc += '-CheXpert';              dataset = EasyDict(tfrecord_dir='CheXpert_256')
-#desc += '-NIH_256';              dataset = EasyDict(tfrecord_dir='TF_data_NIH_256_100%')
+#desc += '-CheXpert';              dataset = EasyDict(tfrecord_dir='CheXpert_256')
+desc += '-NIH_256';              dataset = EasyDict(tfrecord_dir='tf_images_5')
 #desc += '-celebahq';            dataset = EasyDict(tfrecord_dir='celebahq'); train.mirror_augment = True
 #desc += '-celeba';              dataset = EasyDict(tfrecord_dir='celeba'); train.mirror_augment = True
 #desc += '-cifar10';             dataset = EasyDict(tfrecord_dir='cifar10')
@@ -92,13 +92,13 @@ desc += '-CheXpert';              dataset = EasyDict(tfrecord_dir='CheXpert_256'
 #desc += '-lsun-tvmonitor';      dataset = EasyDict(tfrecord_dir='lsun-tvmonitor-100k');      train.mirror_augment = True
 
 # Conditioning & snapshot options.
-#desc += '-cond'; dataset.max_label_size = 'full' # conditioned on full label
+desc += '-cond'; dataset.max_label_size = 'full' # conditioned on full label
 #desc += '-cond1'; dataset.max_label_size = 1 # conditioned on first component of the label
 #desc += '-g4k'; grid.size = '4k'
 #desc += '-grpc'; grid.layout = 'row_per_class'
 
 # Config presets (choose one).
-#desc += '-preset-v1-1gpu'; num_gpus = 1; D.mbstd_group_size = 16; sched.minibatch_base = 16; sched.minibatch_dict = {256: 14, 512: 6, 1024: 3}; sched.lod_training_kimg = 800; sched.lod_transition_kimg = 800; train.total_kimg = 19000
+desc += '-preset-v1-1gpu'; num_gpus = 1; D.mbstd_group_size = 16; sched.minibatch_base = 16; sched.minibatch_dict = {256: 14, 512: 6, 1024: 3}; sched.lod_training_kimg = 800; sched.lod_transition_kimg = 800; train.total_kimg = 19000
 #desc += '-preset-v2-1gpu'; num_gpus = 1; sched.minibatch_base = 4; sched.minibatch_dict = {4: 128, 8: 128, 16: 128, 32: 64, 64: 32, 128: 16, 256: 8, 512: 4}; sched.G_lrate_dict = {1024: 0.0015}; sched.D_lrate_dict = EasyDict(sched.G_lrate_dict); train.total_kimg = 12000
 #desc += '-preset-v2-2gpus'; num_gpus = 2; sched.minibatch_base = 8; sched.minibatch_dict = {4: 256, 8: 256, 16: 128, 32: 64, 64: 32, 128: 16, 256: 8}; sched.G_lrate_dict = {512: 0.0015, 1024: 0.002}; sched.D_lrate_dict = EasyDict(sched.G_lrate_dict); train.total_kimg = 12000
 #desc += '-preset-v2-4gpus'; num_gpus = 4; sched.minibatch_base = 16; sched.minibatch_dict = {4: 512, 8: 256, 16: 128, 32: 64, 64: 32, 128: 16}; sched.G_lrate_dict = {256: 0.0015, 512: 0.002, 1024: 0.003}; sched.D_lrate_dict = EasyDict(sched.G_lrate_dict); train.total_kimg = 12000
@@ -130,7 +130,7 @@ desc += '-CheXpert';              dataset = EasyDict(tfrecord_dir='CheXpert_256'
 # Utility scripts.
 # To run, uncomment the appropriate line and launch train.py.
 
-#train = EasyDict(func='util_scripts.generate_fake_images', run_id=23, num_pngs=1000); num_gpus = 1; desc = 'fake-images-' + str(train.run_id)
+train = EasyDict(func='util_scripts.generate_fake_images', run_id= 0, num_pngs=1000); num_gpus = 1; desc = 'fake-images-' + str(train.run_id)
 #train = EasyDict(func='util_scripts.generate_fake_images', run_id=23, grid_size=[15,8], num_pngs=10, image_shrink=4); num_gpus = 1; desc = 'fake-grids-' + str(train.run_id)
 #train = EasyDict(func='util_scripts.generate_interpolation_video', run_id=23, grid_size=[1,1], duration_sec=60.0, smoothing_sec=1.0); num_gpus = 1; desc = 'interpolation-video-' + str(train.run_id)
 #train = EasyDict(func='util_scripts.generate_training_video', run_id=23, duration_sec=20.0); num_gpus = 1; desc = 'training-video-' + str(train.run_id)

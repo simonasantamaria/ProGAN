@@ -26,19 +26,37 @@ import dataset
 # To run, uncomment the appropriate line in config.py and launch train.py.
 
 def generate_fake_images(run_id, snapshot=None, grid_size=[1,1], num_pngs=1, image_shrink=1, png_prefix=None, random_seed=1000, minibatch_size=8):
-    network_pkl = misc.locate_network_pkl(run_id, snapshot)
-    if png_prefix is None:
-        png_prefix = misc.get_id_string_for_network_pkl(network_pkl) + '-'
+    #added for testing
+    result_subdir = misc.locate_result_subdir(run_id)
+    #print("result_subdir",result_subdir)
+    snapshot_pkls = misc.list_network_pkls(result_subdir, include_final=False)
+    #print("run_id, snapshot",run_id, snapshot)
+    network_pkl = misc.locate_network_pkl(run_id, snapshot) #error if no pickle file
+
+    if network_pkl != None:
+        if png_prefix is None:
+            png_prefix = misc.get_id_string_for_network_pkl(network_pkl) + '-'
+        print('Loading network from "%s"...' % network_pkl)
+    else:
+        "no pickle file found"
+
+
     random_state = np.random.RandomState(random_seed)
 
-    print('Loading network from "%s"...' % network_pkl)
-    G, D, Gs = misc.load_network_pkl(run_id, snapshot)
+    #print('Loading network from "%s"...' % network_pkl)
+    
+    #print("run_id, snapshot",run_id, snapshot)
+    G, D, Gs = misc.(run_id, snapshot)
 
     result_subdir = misc.create_result_subdir(config.result_dir, config.desc)
+
     for png_idx in range(num_pngs):
+        #print("num_pngs",num_pngs)
         print('Generating png %d / %d...' % (png_idx, num_pngs))
         latents = misc.random_latents(np.prod(grid_size), Gs, random_state=random_state)
-        labels = np.zeros([latents.shape[0], 0], np.float32)
+        labels = np.zeros([latents.shape[0], 14], np.float32) #labels 0,14 for us
+        #print("latents",latents.shape)
+        #print("labels",labels)
         images = Gs.run(latents, labels, minibatch_size=minibatch_size, num_gpus=config.num_gpus, out_mul=127.5, out_add=127.5, out_shrink=image_shrink, out_dtype=np.uint8)
         misc.save_image_grid(images, os.path.join(result_subdir, '%s%06d.png' % (png_prefix, png_idx)), [0,255], grid_size)
     open(os.path.join(result_subdir, '_done.txt'), 'wt').close()

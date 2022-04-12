@@ -8,6 +8,7 @@
 import os
 import sys
 import glob
+
 import argparse
 import threading
 import six.moves.queue as Queue
@@ -19,6 +20,9 @@ import PIL.Image
 import tfutil
 import dataset
 
+from PIL import UnidentifiedImageError
+
+
 #----------------------------------------------------------------------------
 
 def error(msg):
@@ -28,7 +32,7 @@ def error(msg):
 #----------------------------------------------------------------------------
 
 class TFRecordExporter:
-    def __init__(self, tfrecord_dir, expected_images, print_progress=True, progress_interval=10):
+    def __init__(self, tfrecord_dir, expected_images, print_progress=True, progress_interval=100):
         self.tfrecord_dir       = tfrecord_dir
         self.tfr_prefix         = os.path.join(self.tfrecord_dir, os.path.basename(self.tfrecord_dir))
         self.expected_images    = expected_images
@@ -52,19 +56,27 @@ class TFRecordExporter:
         self.tfr_writers = []
         if self.print_progress:
             print('%-40s\r' % '', end='', flush=True)
+            print()
             print('Added %d images.' % self.cur_images)
 
     def choose_shuffled_order(self): # Note: Images and labels must be added in shuffled order.
+        print("inside shuffle",self.expected_images)
         order = np.arange(self.expected_images)
         np.random.RandomState(123).shuffle(order)
         return order
 
     def add_image(self, img):
+        #print("self.shape",self.shape)
         if self.print_progress and self.cur_images % self.progress_interval == 0:
-            print('%d / %d\r' % (self.cur_images, self.expected_images), end='', flush=True)
+            #print("print_progress",self.cur_images)
+            print("self.cur_images, self.expected_images",self.cur_images, self.expected_images)
+            #print('%d / %d\r' % (self.cur_images, self.expected_images), end='', flush=True)
         if self.shape is None:
             self.shape = img.shape
+            #print("inside no shape")
+            #print("img.shape")
             self.resolution_log2 = int(np.log2(self.shape[1]))
+            #print("self.shape[1]",self.shape[1])
             assert self.shape[0] in [1, 3]
             assert self.shape[1] == self.shape[2]
             assert self.shape[1] == 2**self.resolution_log2
@@ -82,7 +94,9 @@ class TFRecordExporter:
                 'shape': tf.train.Feature(int64_list=tf.train.Int64List(value=quant.shape)),
                 'data': tf.train.Feature(bytes_list=tf.train.BytesList(value=[quant.tostring()]))}))
             tfr_writer.write(ex.SerializeToString())
+        #print("-----------------------------------")
         self.cur_images += 1
+        #print("self.cur_images",self.cur_images)
 
     def add_labels(self, labels):
         if self.print_progress:
@@ -596,6 +610,7 @@ def create_celebahq(tfrecord_dir, celeba_dir, delta_dir, num_threads=4, num_task
 #----------------------------------------------------------------------------
 
 def create_from_images(tfrecord_dir, image_dir, shuffle):
+    print(tf.__version__)
     print('Loading images from "%s"' % image_dir)
     image_filenames = sorted(glob.glob(os.path.join(image_dir, '*')))
     if len(image_filenames) == 0:
@@ -625,14 +640,26 @@ def create_from_images(tfrecord_dir, image_dir, shuffle):
 # Write our own data generator by referencing create_from_hdf5 and create_mnist
 
 def create_from_images_labels(tfrecord_dir, image_dir, label_dir, label_file, shuffle):
-    print('Loading images from "%s"' % image_dir)
-    image_filenames = sorted(glob.glob(os.path.join(image_dir, '*')))
+    #print('Loading images from "%s"' % image_dir)
+    image_filenames = []
+    #for i in range(1,2): #13
+    #image_d = image_dir + str(i)
+    image_d = image_dir
+        #print("imgd",image_d)
+    image_filenames.extend(sorted(glob.glob(os.path.join(image_d, '*'))))
+    image_filenames = image_filenames[0:1000]
+    #image_filenames = sorted(glob.glob(os.path.join(image_dir, '*')))
+    #print("image_filenames",image_filenames)
+    #print("len images",len(image_filenames))
     if len(image_filenames) == 0:
         error('No input images found')
-        
     img = np.asarray(PIL.Image.open(image_filenames[0]))
+
     resolution = img.shape[0]
+    #print("img.ndim",img.ndim)
+    #print("before channel",img.shape)
     channels = img.shape[2] if img.ndim == 3 else 1
+    #print("channels X",channels)
     if img.shape[1] != resolution:
         error('Input images must have the same width and height')
     if resolution != 2 ** int(np.floor(np.log2(resolution))):
@@ -642,7 +669,9 @@ def create_from_images_labels(tfrecord_dir, image_dir, label_dir, label_file, sh
 
     npy_filename = os.path.join(label_dir, label_file)
     if os.path.isfile(npy_filename):
-        pathology_dict = np.load(npy_filename).item()
+        pathology_dict = np.load(npy_filename,allow_pickle=True)
+        #pathology_dict = np.load(npy_filename,allow_pickle=True).item()
+        #print("pathology_dict",pathology_dict)
         print('Successfully load the label dictionary from "%s"' % label_dir)
     else:
         error('No input labels found in "%s"' % label_dir)
@@ -650,21 +679,67 @@ def create_from_images_labels(tfrecord_dir, image_dir, label_dir, label_file, sh
     onehot = []
     
     with TFRecordExporter(tfrecord_dir, len(image_filenames)) as tfr:
+        #print(" len(image_filenames))", len(image_filenames))
+        #print("image_filenames",image_filenames)
         order = tfr.choose_shuffled_order() if shuffle else np.arange(len(image_filenames))
+        #print("order",order)
         for idx in range(order.size):
-            img = np.asarray(PIL.Image.open(image_filenames[order[idx]]))
-            if channels == 1:
-                img = img[np.newaxis, :, :] # HW => CHW
-            else:
-                img = img.transpose(2, 0, 1) # HWC => CHW
+            #print("order[idx]",order[idx])
+            #print("image_filenames[order[idx]]",image_filenames[order[idx]])
+            try:
+                img = np.asarray(PIL.Image.open(image_filenames[order[idx]]))
+                #print("img.shape",img.shape)
+            except PIL.UnidentifiedImageError:
+                print(PIL.UnidentifiedImageError)
+                print("image_filenames[0]",image_filenames[0])
+                continue
+            #print("HERE-------------------")
+            #print(img.shape)
+            try:
+                #print("inside shape check")
+                a = img.shape[0]
+            except:
+                continue
+            if img.ndim == 3:
+                print("inside channel 4")
+                img = img.reshape((4,1024, 1024))
+                img= img[0,:,:]
+                img = img[np.newaxis, :, :] 
+                print("44444",img.shape)
+
+            if channels == 1 and img.ndim == 2:
+                    #print("inside channel1")
+                    img = img[np.newaxis, :, :] # HW => CHW
+                    #print("after channel", img.shape)
+            #else:
+            #    img = img.transpose(2, 0, 1) # HWC => CHW
+            #print("image that is added",img.shape)
+            if img.shape[2] == 1024:
+                #print("old shape",img.shape)
+                img = img.reshape((1,1024, 1024))
+                #print("new shape",img.shape)
+            #print("before",img.shape)
             tfr.add_image(img)
             
             dict_key = image_filenames[order[idx]]
             dict_key = os.path.basename(dict_key)
-            #print('Here is the dictionary key: ' + os.path.basename(dict_key))
-            pathology_vector = pathology_dict[dict_key]
+        
+            #print('Here is the dictionary key: ' + dict_key)
+            #dic = dict_key[:12]
+            #print("dict_key",dic)
+            #print("dict_key",dict_key)
+            #dic = order[idx]
+            i = np.where(pathology_dict == dict_key)
+            #print("result[i[0][0]]",pathology_dict[i[0][0]])
+            pathology_vector = pathology_dict[i[0][0]]
+            pathology_vector = pathology_vector[1:15]
+            #print("pathology_vector",pathology_vector)
+            #pathology_vector = pathology_vector[0:18]
+            #print("pathology_vec",pathology_vector)
+            #print("pathology_dict[dic]",pathology_dict[dic])
             onehot.append(pathology_vector)
         
+        print("onehot",onehot)
         onehot = np.array(onehot, np.float32)
         print('Adding one-hot labels to TFRecord files!')
         tfr.add_labels(onehot)

@@ -80,6 +80,7 @@ def save_image(image, filename, drange=[0,1], quality=95):
         img.save(filename)
 
 def save_image_grid(images, filename, drange=[0,1], grid_size=None):
+    #print("save_image_grid",images.shape)
     convert_to_pil_image(create_image_grid(images, grid_size), drange).save(filename)
 
 #----------------------------------------------------------------------------
@@ -185,6 +186,7 @@ def format_time(seconds):
 # Locating results.
 
 def locate_result_subdir(run_id_or_result_subdir):
+    print("run_id_or_result_subdir",run_id_or_result_subdir)
     if isinstance(run_id_or_result_subdir, str) and os.path.isdir(run_id_or_result_subdir):
         return run_id_or_result_subdir
 
@@ -196,6 +198,7 @@ def locate_result_subdir(run_id_or_result_subdir):
     for searchdir in searchdirs:
         dir = config.result_dir if searchdir == '' else os.path.join(config.result_dir, searchdir)
         dir = os.path.join(dir, str(run_id_or_result_subdir))
+        print("dir",dir)
         if os.path.isdir(dir):
             return dir
         prefix = '%03d' % run_id_or_result_subdir if isinstance(run_id_or_result_subdir, int) else str(run_id_or_result_subdir)
@@ -206,6 +209,7 @@ def locate_result_subdir(run_id_or_result_subdir):
     raise IOError('Cannot locate result subdir for run', run_id_or_result_subdir)
 
 def list_network_pkls(run_id_or_result_subdir, include_final=True):
+    print("run_id_or_result_subdir",run_id_or_result_subdir)
     result_subdir = locate_result_subdir(run_id_or_result_subdir)
     pkls = sorted(glob.glob(os.path.join(result_subdir, 'network-*.pkl')))
     if len(pkls) >= 1 and os.path.basename(pkls[0]) == 'network-final.pkl':
@@ -215,12 +219,18 @@ def list_network_pkls(run_id_or_result_subdir, include_final=True):
     return pkls
 
 def locate_network_pkl(run_id_or_result_subdir_or_network_pkl, snapshot=None):
+    print("run_id_or_result_subdir_or_network_pkl",run_id_or_result_subdir_or_network_pkl)
+    print("os.path.isfile(run_id_or_result_subdir_or_network_pkl)",os.path.isfile(run_id_or_result_subdir_or_network_pkl))
     if isinstance(run_id_or_result_subdir_or_network_pkl, str) and os.path.isfile(run_id_or_result_subdir_or_network_pkl):
         return run_id_or_result_subdir_or_network_pkl
 
     pkls = list_network_pkls(run_id_or_result_subdir_or_network_pkl)
+    print("pkls",pkls)
     if len(pkls) >= 1 and snapshot is None:
         return pkls[-1]
+    if pkls == []:
+        print("No pickle file found")
+        return None
     for pkl in pkls:
         try:
             name = os.path.splitext(os.path.basename(pkl))[0]
@@ -229,7 +239,7 @@ def locate_network_pkl(run_id_or_result_subdir_or_network_pkl, snapshot=None):
                 return pkl
         except ValueError: pass
         except IndexError: pass
-    raise IOError('Cannot locate network pkl for snapshot', snapshot)
+    #raise IOError('Cannot locate network pkl for snapshot', snapshot)
 
 def get_id_string_for_network_pkl(network_pkl):
     p = network_pkl.replace('.pkl', '').replace('\\', '/').split('/')
@@ -239,6 +249,7 @@ def get_id_string_for_network_pkl(network_pkl):
 # Loading and using trained networks.
 
 def load_network_pkl(run_id_or_result_subdir_or_network_pkl, snapshot=None):
+    print("run_id_or_result_subdir_or_network_pkl",run_id_or_result_subdir_or_network_pkl)
     return load_pkl(locate_network_pkl(run_id_or_result_subdir_or_network_pkl, snapshot))
 
 def random_latents(num_latents, G, random_state=None):

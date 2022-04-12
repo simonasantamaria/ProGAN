@@ -151,6 +151,7 @@ def train_progressive_gan(
     maintenance_start_time = time.time()
     training_set = dataset.load_dataset(data_dir=config.data_dir, verbose=True, **config.dataset)
 
+    #print("resume id",resume_run_id )
     # Construct networks.
     with tf.device('/gpu:0'):
         if resume_run_id is not None:
@@ -199,6 +200,7 @@ def train_progressive_gan(
 
     print('Setting up result dir...')
     result_subdir = misc.create_result_subdir(config.result_dir, config.desc)
+    #print("save_image_grid",grid_reals)
     misc.save_image_grid(grid_reals, os.path.join(result_subdir, 'reals.png'), drange=training_set.dynamic_range, grid_size=grid_size)
     misc.save_image_grid(grid_fakes, os.path.join(result_subdir, 'fakes%06d.png' % 0), drange=drange_net, grid_size=grid_size)
     summary_log = tf.summary.FileWriter(result_subdir)

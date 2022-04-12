@@ -233,6 +233,7 @@ def import_obj(obj_name):
 
 def call_func_by_name(*args, func=None, **kwargs):
     assert func is not None
+    print("func",func)
     return import_obj(func)(*args, **kwargs)
 
 #----------------------------------------------------------------------------
@@ -399,7 +400,7 @@ class Optimizer:
         return value * exp2(-self.get_loss_scaling_var(value.device))
 
 #----------------------------------------------------------------------------
-# Generic network abstraction.
+# init_tfic network abstraction.
 #
 # Acts as a convenience wrapper for a parameterized network construction
 # function, providing several utility methods and convenient access to
@@ -472,8 +473,12 @@ class Network:
             assert tf.get_variable_scope().name == self.scope
             with absolute_name_scope(self.scope): # ignore surrounding name_scope
                 with tf.control_dependencies(None): # ignore surrounding control_dependencies
+                    #print("NETWORKinput_templates",self.input_templates)
+                    #print("NETWORKself.input_names",self.input_names)
                     self.input_templates = [tf.placeholder(tf.float32, name=name) for name in self.input_names]
+                    #print("NETWORKinput_templates",self.input_templates)
                     out_expr = self._build_func(*self.input_templates, is_template_graph=True, **self.static_kwargs)
+                    #print("NETWORKout_expr",out_expr)
             
         # Collect outputs.
         assert is_tf_expression(out_expr) or isinstance(out_expr, tuple)
@@ -484,8 +489,10 @@ class Network:
         
         # Populate remaining fields.
         self.input_shapes   = [shape_to_list(t.shape) for t in self.input_templates]
+        #print("NETWORKself.input_shapes",self.input_shapes)
         self.output_shapes  = [shape_to_list(t.shape) for t in self.output_templates]
         self.input_shape    = self.input_shapes[0]
+        #print("NETWORKself.input_shapes",self.input_shapes)
         self.output_shape   = self.output_shapes[0]
         self.vars           = OrderedDict([(self.get_var_localname(var), var) for var in tf.global_variables(self.scope + '/')])
         self.trainables     = OrderedDict([(self.get_var_localname(var), var) for var in tf.trainable_variables(self.scope + '/')])
@@ -629,6 +636,8 @@ class Network:
         out_dtype       = None,     # Convert the output to the specified data type.
         **dynamic_kwargs):          # Additional keyword arguments to pass into the network construction function.
 
+        #print("in_arrays",in_arrays[0].shape)
+        #print("in_arrays",in_arrays[1].shape)
         assert len(in_arrays) == self.num_inputs
         num_items = in_arrays[0].shape[0]
         if minibatch_size is None:
@@ -636,35 +645,56 @@ class Network:
         key = str([list(sorted(dynamic_kwargs.items())), num_gpus, out_mul, out_add, out_shrink, out_dtype])
 
         # Build graph.
+
+        #print("self._run_cache",self._run_cache)
+
         if key not in self._run_cache:
+            print("key not in self ")
             with absolute_name_scope(self.scope + '/Run'), tf.control_dependencies(None):
                 in_split = list(zip(*[tf.split(x, num_gpus) for x in self.input_templates]))
+                print("in_split ",in_split )
                 out_split = []
                 for gpu in range(num_gpus):
+                    print("tf.device",tf.device('/gpu:%d' % gpu))
                     with tf.device('/gpu:%d' % gpu):
                         out_expr = self.get_output_for(*in_split[gpu], return_as_list=True, **dynamic_kwargs)
+                        #print("1out_expr",out_expr)
                         if out_mul != 1.0:
                             out_expr = [x * out_mul for x in out_expr]
+                            #print("2out_expr",out_expr)
                         if out_add != 0.0:
                             out_expr = [x + out_add for x in out_expr]
+                            #print("3out_expr",out_expr)
                         if out_shrink > 1:
                             ksize = [1, 1, out_shrink, out_shrink]
                             out_expr = [tf.nn.avg_pool(x, ksize=ksize, strides=ksize, padding='VALID', data_format='NCHW') for x in out_expr]
+                            #print("4out_expr",out_expr)
                         if out_dtype is not None:
                             if tf.as_dtype(out_dtype).is_integer:
+                                #print("5out_expr",out_expr)
                                 out_expr = [tf.round(x) for x in out_expr]
                             out_expr = [tf.saturate_cast(x, out_dtype) for x in out_expr]
+        
                         out_split.append(out_expr)
                 self._run_cache[key] = [tf.concat(outputs, axis=0) for outputs in zip(*out_split)]
 
         # Run minibatches.
         out_expr = self._run_cache[key]
+        #print("55out_expr",out_expr)
         out_arrays = [np.empty([num_items] + shape_to_list(expr.shape)[1:], expr.dtype.name) for expr in out_expr]
         for mb_begin in range(0, num_items, minibatch_size):
+            print('\r%d / %d' % (mb_begin, num_items), end='')
             if print_progress:
                 print('\r%d / %d' % (mb_begin, num_items), end='')
             mb_end = min(mb_begin + minibatch_size, num_items)
             mb_in = [src[mb_begin : mb_end] for src in in_arrays]
+            #print("out_expr",out_expr)
+            #print("self.input_templates",self.input_templates)
+            #print("mnshape",len(mb_in))
+            #print("mnshape",mb_in[0].shape)
+            #print("mnshape",mb_in[1].shape)
+            #print("zip(self.input_templates, mb_in)",zip(self.input_templates, mb_in))
+            #print("dict(zip(self.input_templates, mb_in))",dict(zip(self.input_templates, mb_in)))
             mb_out = tf.get_default_session().run(out_expr, dict(zip(self.input_templates, mb_in)))
             for dst, src in zip(out_arrays, mb_out):
                 dst[mb_begin : mb_end] = src
