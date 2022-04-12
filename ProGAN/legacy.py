@@ -18,10 +18,13 @@ import networks
 
 class LegacyUnpickler(pickle.Unpickler):
     def __init__(self, *args, **kwargs):
+        print("inside LegacyUnpickler init")
+        print("pickle.Unpickler",pickle.Unpickler)
         super().__init__(*args, **kwargs)
 
     def find_class(self, module, name):
         if module == 'network' and name == 'Network':
+            print("tfutil.Network",tfutil.Network)
             return tfutil.Network
         return super().find_class(module, name)
 

@@ -13,11 +13,16 @@ import imp
 import numpy as np
 from collections import OrderedDict
 import tensorflow as tf
+tf.compat.v1.disable_eager_execution()
+
+#from tensorflow.python.client import device_lib
+
 
 #----------------------------------------------------------------------------
 # Convenience.
 
 def run(*args, **kwargs): # Run the specified ops in the default session.
+    print("inside RUN")
     return tf.get_default_session().run(*args, **kwargs)
 
 def is_tf_expression(x):
@@ -655,7 +660,7 @@ class Network:
                 print("in_split ",in_split )
                 out_split = []
                 for gpu in range(num_gpus):
-                    print("tf.device",tf.device('/gpu:%d' % gpu))
+                    #print("tf.device",tf.device('/gpu:%d' % gpu))
                     with tf.device('/gpu:%d' % gpu):
                         out_expr = self.get_output_for(*in_split[gpu], return_as_list=True, **dynamic_kwargs)
                         #print("1out_expr",out_expr)
@@ -695,7 +700,14 @@ class Network:
             #print("mnshape",mb_in[1].shape)
             #print("zip(self.input_templates, mb_in)",zip(self.input_templates, mb_in))
             #print("dict(zip(self.input_templates, mb_in))",dict(zip(self.input_templates, mb_in)))
+            print("1here")
+            print("out_expr",out_expr)
+            print("dict(zip(self.input_templates, mb_in))",dict(zip(self.input_templates, mb_in)))
+            Default = tf.get_default_session()
+            print("Default",Default)
+            print(device_lib.list_local_devices())
             mb_out = tf.get_default_session().run(out_expr, dict(zip(self.input_templates, mb_in)))
+            print("2here")
             for dst, src in zip(out_arrays, mb_out):
                 dst[mb_begin : mb_end] = src
 

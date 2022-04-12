@@ -46,7 +46,16 @@ def generate_fake_images(run_id, snapshot=None, grid_size=[1,1], num_pngs=1, ima
     #print('Loading network from "%s"...' % network_pkl)
     
     #print("run_id, snapshot",run_id, snapshot)
-    G, D, Gs = misc.(run_id, snapshot)
+    G, D, Gs = misc.load_network_pkl(run_id, snapshot)
+    
+    #G, D, Gs = tfutil.init_tf(config.tf_config)
+
+    #training_set = dataset.load_dataset(data_dir=config.data_dir, verbose=True, **config.dataset)
+    #G = tfutil.Network('G', num_channels=training_set.shape[0], resolution=training_set.shape[1], label_size=training_set.label_size, **config.G)
+    #D = tfutil.Network('D', num_channels=training_set.shape[0], resolution=training_set.shape[1], label_size=training_set.label_size, **config.D)
+    #Gs = G.clone('Gs')
+
+    print("G, D, Gs",G, D, Gs)
 
     result_subdir = misc.create_result_subdir(config.result_dir, config.desc)
 
@@ -57,6 +66,7 @@ def generate_fake_images(run_id, snapshot=None, grid_size=[1,1], num_pngs=1, ima
         labels = np.zeros([latents.shape[0], 14], np.float32) #labels 0,14 for us
         #print("latents",latents.shape)
         #print("labels",labels)
+        print("before images")
         images = Gs.run(latents, labels, minibatch_size=minibatch_size, num_gpus=config.num_gpus, out_mul=127.5, out_add=127.5, out_shrink=image_shrink, out_dtype=np.uint8)
         misc.save_image_grid(images, os.path.join(result_subdir, '%s%06d.png' % (png_prefix, png_idx)), [0,255], grid_size)
     open(os.path.join(result_subdir, '_done.txt'), 'wt').close()
@@ -244,6 +254,7 @@ def evaluate_metrics(run_id, log, metrics, num_images, real_passes, minibatch_si
         time_begin = time.time()
         with tf.Graph().as_default(), tfutil.create_session(config.tf_config).as_default():
             G, D, Gs = misc.load_pkl(snapshot_pkl)
+            print("G, D, Gs",G, D, Gs)
             for begin in range(0, num_images, minibatch_size):
                 end = min(begin + minibatch_size, num_images)
                 latents = misc.random_latents(end - begin, Gs)

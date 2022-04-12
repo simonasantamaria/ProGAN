@@ -20,12 +20,20 @@ import config
 import dataset
 import legacy
 
+import pandas as pd
+
 #----------------------------------------------------------------------------
 # Convenience wrappers for pickle that are able to load data produced by
 # older versions of the code.
 
 def load_pkl(filename):
     with open(filename, 'rb') as file:
+        print("filename",filename)
+        print("file",file)
+        print("legacy.LegacyUnpickler(file, encoding='latin1').load()",legacy.LegacyUnpickler(file, encoding='latin1'))
+        #test = legacy.LegacyUnpickler(file, encoding='latin1')
+        #test = pd.read_pickle(filename)
+        #print("test",test)
         return legacy.LegacyUnpickler(file, encoding='latin1').load()
 
 def save_pkl(obj, filename):
