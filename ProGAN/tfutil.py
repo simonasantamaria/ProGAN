@@ -14,6 +14,9 @@ import numpy as np
 from collections import OrderedDict
 import tensorflow as tf
 
+tf.compat.v1.disable_eager_execution()
+
+
 #----------------------------------------------------------------------------
 # Convenience.
 
@@ -222,9 +225,12 @@ def import_module(module_or_obj_name):
     raise ImportError(module_or_obj_name)
 
 def find_obj_in_module(module, relative_obj_name):
+    print("here 2")
     obj = module
+    print("module",module)
     for part in relative_obj_name.split('.'):
         obj = getattr(obj, part)
+        print("here 3")
     return obj
 
 def import_obj(obj_name):
@@ -473,7 +479,11 @@ class Network:
             with absolute_name_scope(self.scope): # ignore surrounding name_scope
                 with tf.control_dependencies(None): # ignore surrounding control_dependencies
                     self.input_templates = [tf.placeholder(tf.float32, name=name) for name in self.input_names]
+                    print("self._build_func")
+                    print("self.input_templates ",*self.input_templates )
+                    print("self.input_templates ",self.input_templates )
                     out_expr = self._build_func(*self.input_templates, is_template_graph=True, **self.static_kwargs)
+                    print("out_expr",out_expr)
             
         # Collect outputs.
         assert is_tf_expression(out_expr) or isinstance(out_expr, tuple)
@@ -507,6 +517,7 @@ class Network:
             assert tf.get_variable_scope().name == self.scope
             named_inputs = [tf.identity(expr, name=name) for expr, name in zip(in_expr, self.input_names)]
             out_expr = self._build_func(*named_inputs, **all_kwargs)
+            print("out_expr",out_expr)
         assert is_tf_expression(out_expr) or isinstance(out_expr, tuple)
         if return_as_list:
             out_expr = [out_expr] if is_tf_expression(out_expr) else list(out_expr)
@@ -564,7 +575,9 @@ class Network:
         # Parse imported module.
         module = imp.new_module('_tfutil_network_import_module_%d' % len(_network_import_modules))
         exec(self._build_module_src, module.__dict__)
+        print("here")
         self._build_func = find_obj_in_module(module, self._build_func_name)
+        print("self._build_func",self._build_func)
         _network_import_modules.append(module) # avoid gc
         
         # Init graph.

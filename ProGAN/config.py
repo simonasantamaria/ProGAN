@@ -18,8 +18,8 @@ class EasyDict(dict):
 #----------------------------------------------------------------------------
 # Paths.
 
-data_dir = '/media/tianyu.han/mri-scratch/DeepLearning/dataset/'
-result_dir = '/media/tianyu.han/mri-scratch/DeepLearning/CheXpert_Dataset/GAN_CheXpert/'
+data_dir = '/content/drive/MyDrive/ryver.ai/06_Technology/CGAN/NIH/'
+result_dir = '/content/drive/MyDrive/ryver.ai/06_Technology/CGAN/NIH/GAN_NIH/'
 
 #----------------------------------------------------------------------------
 # TensorFlow options.
@@ -50,8 +50,8 @@ sched       = EasyDict()                                    # Options for train.
 grid        = EasyDict(size='1080p', layout='random')       # Options for train.setup_snapshot_image_grid().
 
 # Dataset (choose one).
-desc += '-CheXpert';              dataset = EasyDict(tfrecord_dir='CheXpert_256')
-#desc += '-NIH_256';              dataset = EasyDict(tfrecord_dir='TF_data_NIH_256_100%')
+#desc += '-CheXpert';              dataset = EasyDict(tfrecord_dir='CheXpert_256')
+desc += '-NIH_256';              dataset = EasyDict(tfrecord_dir='tf_images_5')
 #desc += '-celebahq';            dataset = EasyDict(tfrecord_dir='celebahq'); train.mirror_augment = True
 #desc += '-celeba';              dataset = EasyDict(tfrecord_dir='celeba'); train.mirror_augment = True
 #desc += '-cifar10';             dataset = EasyDict(tfrecord_dir='cifar10')
@@ -130,7 +130,7 @@ desc += '-CheXpert';              dataset = EasyDict(tfrecord_dir='CheXpert_256'
 # Utility scripts.
 # To run, uncomment the appropriate line and launch train.py.
 
-#train = EasyDict(func='util_scripts.generate_fake_images', run_id=23, num_pngs=1000); num_gpus = 1; desc = 'fake-images-' + str(train.run_id)
+train = EasyDict(func='util_scripts.generate_fake_images', run_id=1, num_pngs=1000); num_gpus = 1; desc = 'fake-images-' + str(train.run_id)
 #train = EasyDict(func='util_scripts.generate_fake_images', run_id=23, grid_size=[15,8], num_pngs=10, image_shrink=4); num_gpus = 1; desc = 'fake-grids-' + str(train.run_id)
 #train = EasyDict(func='util_scripts.generate_interpolation_video', run_id=23, grid_size=[1,1], duration_sec=60.0, smoothing_sec=1.0); num_gpus = 1; desc = 'interpolation-video-' + str(train.run_id)
 #train = EasyDict(func='util_scripts.generate_training_video', run_id=23, duration_sec=20.0); num_gpus = 1; desc = 'training-video-' + str(train.run_id)
